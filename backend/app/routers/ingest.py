@@ -1,84 +1,54 @@
-import uuid
-from fastapi import APIRouter, HTTPException, status, File, UploadFile, Query
-from app.schemas import IngestRequest, IngestResponse, PDFIngestResponse
-from app.services.pdf_service import extract_text_from_pdf_bytes
-from app.services.chunker import chunk_document_pages
+import tempfile
+import shutil
+from pathlib import Path
+from fastapi import APIRouter, HTTPException, status, File, UploadFile
+from app.graphs.ingest_graph import ingest_graph
 
 router = APIRouter(tags=["Ingestion"])
 
-@router.post("/ingest", response_model=IngestResponse, status_code=status.HTTP_201_CREATED)
-async def ingest_raw_text(payload: IngestRequest):
-    """
-    Ingest raw text content into the system.
-    """
-    if not payload.content.strip():
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Content cannot be empty."
-        )
-
-    doc_id = f"doc_{uuid.uuid4().hex[:12]}"
-    
-    return IngestResponse(
-        status="success",
-        message=f"Successfully ingested raw text ({len(payload.content)} characters)",
-        document_id=doc_id
-    )
-
-@router.post("/ingest/pdf", response_model=PDFIngestResponse, status_code=status.HTTP_201_CREATED)
-async def ingest_pdf_document(
-    file: UploadFile = File(..., description="PDF document file to upload and ingest"),
-    chunk_size: int = Query(500, ge=100, le=2000, description="Character size for each text chunk"),
-    chunk_overlap: int = Query(50, ge=0, le=500, description="Overlapping characters between chunks")
+@router.post("/ingest", status_code=status.HTTP_200_OK)
+async def ingest_pdf_file(
+    file: UploadFile = File(..., description="PDF file to upload and process through ingest_graph")
 ):
     """
-    Upload a PDF document, extract text page-by-page, and chunk it for vector embedding.
+    Step 7 Endpoint: Accepts PDF upload, streams file to temporary disk,
+    invokes ingest_graph (load_pdf -> chunk_text -> embed_and_store),
+    and returns processing confirmation.
     """
-    # 1. Validate file extension
     filename = file.filename or "uploaded_document.pdf"
     if not filename.lower().endswith(".pdf"):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid file format. Only PDF files (.pdf) are allowed."
+            detail="Invalid file format. Only PDF files (.pdf) are accepted."
         )
 
-    # 2. Read file bytes
+    # Save uploaded PDF to a temporary file for graph processing
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
+        shutil.copyfileobj(file.file, tmp)
+        tmp_path = tmp.name
+
     try:
-        pdf_bytes = await file.read()
+        # Invoke LangGraph StateGraph pipeline end-to-end
+        result_state = ingest_graph.invoke({
+            "file_path": tmp_path,
+            "filename": filename
+        })
     except Exception as e:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Failed to read uploaded file stream: {str(e)}"
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Ingestion pipeline failed: {str(e)}"
         )
+    finally:
+        # Cleanup temporary file
+        Path(tmp_path).unlink(missing_ok=True)
 
-    # 3. Extract text from PDF bytes
-    pages_text = extract_text_from_pdf_bytes(pdf_bytes)
-    total_pages = len(pages_text)
+    chunks = result_state.get("chunks", [])
+    records = result_state.get("records", [])
 
-    # Check if any readable text was extracted
-    total_chars = sum(len(text) for text in pages_text.values())
-    if total_chars == 0:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="No readable text could be extracted from the PDF (file may be scanned/image-only)."
-        )
-
-    # 4. Chunk document pages
-    chunks = chunk_document_pages(
-        pages_text=pages_text,
-        chunk_size=chunk_size,
-        chunk_overlap=chunk_overlap,
-        filename=filename
-    )
-
-    doc_id = f"doc_pdf_{uuid.uuid4().hex[:12]}"
-
-    return PDFIngestResponse(
-        status="success",
-        message=f"Successfully extracted {total_pages} page(s) and generated {len(chunks)} chunk(s) from '{filename}'",
-        document_id=doc_id,
-        filename=filename,
-        total_pages=total_pages,
-        total_chunks=len(chunks),
-        chunks=chunks
-    )
+    return {
+        "status": "success",
+        "message": f"Successfully processed '{filename}' through LangGraph ingestion pipeline.",
+        "filename": filename,
+        "chunks_count": len(chunks),
+        "inserted_records_count": len(records)
+    }
