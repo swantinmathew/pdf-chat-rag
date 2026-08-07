@@ -1,6 +1,27 @@
 import uuid
 from typing import Dict, List
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 from app.schemas import DocumentChunk
+
+def chunk_text(
+    text: str,
+    chunk_size: int = 500,
+    chunk_overlap: int = 50
+) -> List[str]:
+    """
+    Step 4 Node: Splits raw text into chunks using RecursiveCharacterTextSplitter
+    with specified chunk_size (default: 500) and chunk_overlap (default: 50).
+    Returns a list of raw string chunks.
+    """
+    if not text or not text.strip():
+        return []
+
+    splitter = RecursiveCharacterTextSplitter(
+        chunk_size=chunk_size,
+        chunk_overlap=chunk_overlap,
+        separators=["\n\n", "\n", ". ", " ", ""]
+    )
+    return splitter.split_text(text)
 
 def split_text_into_chunks(
     text: str,
@@ -24,9 +45,7 @@ def split_text_into_chunks(
     while start < text_length:
         end = min(start + chunk_size, text_length)
         
-        # If we are not at the end of the text, look for a natural boundary (period, newline, space)
         if end < text_length:
-            # Look backwards for a sentence boundary within the last 20% of the chunk
             search_start = max(start + int(chunk_size * 0.8), start + 1)
             boundary_found = -1
             for char in [". ", "!\n", "?\n", "\n\n", ". \n", "\n", " "]:
@@ -59,7 +78,6 @@ def split_text_into_chunks(
             )
             current_index += 1
 
-        # Advance start position by (end - chunk_overlap)
         if end >= text_length:
             break
         start = max(end - chunk_overlap, start + 1)
