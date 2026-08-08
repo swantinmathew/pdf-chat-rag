@@ -67,3 +67,71 @@ def embed_and_store(
     response = supabase.table("documents").insert(records).execute()
     
     return response.data
+
+def list_stored_documents() -> List[Dict[str, Any]]:
+    """
+    Retrieves an aggregated list of stored document filenames and their chunk counts from Supabase.
+    """
+    supabase = get_supabase_client()
+    response = supabase.table("documents").select("id, metadata").execute()
+    data = response.data or []
+
+    counts: Dict[str, int] = {}
+    for item in data:
+        meta = item.get("metadata") or {}
+        filename = (
+            meta.get("source")
+            or meta.get("source_filename")
+            or meta.get("filename")
+            or "unknown_document.pdf"
+        )
+        counts[filename] = counts.get(filename, 0) + 1
+
+    return [
+        {"filename": fname, "chunks_count": count}
+        for fname, count in sorted(counts.items())
+    ]
+
+def delete_document_by_filename(filename: str) -> int:
+    """
+    Deletes all vector rows from Supabase 'documents' table matching specified filename.
+    Uses ID list matching to ensure orphaned and unknown_document.pdf records can be deleted cleanly.
+    """
+    supabase = get_supabase_client()
+    response = supabase.table("documents").select("id, metadata").execute()
+    data = response.data or []
+
+    ids_to_delete = []
+    for item in data:
+        meta = item.get("metadata") or {}
+        item_filename = (
+            meta.get("source")
+            or meta.get("source_filename")
+            or meta.get("filename")
+            or "unknown_document.pdf"
+        )
+        if item_filename == filename:
+            ids_to_delete.append(item["id"])
+
+    if not ids_to_delete:
+        return 0
+
+    total_deleted = 0
+    batch_size = 50
+    for i in range(0, len(ids_to_delete), batch_size):
+        batch = ids_to_delete[i : i + batch_size]
+        res = supabase.table("documents").delete().in_("id", batch).execute()
+        total_deleted += len(res.data or [])
+
+    return total_deleted
+
+def clear_all_documents() -> int:
+    """
+    Deletes all rows from Supabase 'documents' table.
+    Returns count of deleted items.
+    """
+    supabase = get_supabase_client()
+    response = supabase.table("documents").delete().neq("content", "NON_EXISTENT_SENTINEL_VAL").execute()
+    return len(response.data or [])
+
+

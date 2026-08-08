@@ -9,6 +9,9 @@ import {
   FaSpinner,
   FaTimes,
   FaCheckCircle,
+  FaTrash,
+  FaDatabase,
+  FaExclamationTriangle,
 } from 'react-icons/fa';
 
 type UploadStatus = 'uploading' | 'completed' | 'error';
@@ -24,6 +27,18 @@ interface UploadFile {
   chunksCount?: number;
   insertedCount?: number;
   errorMessage?: string;
+}
+
+interface StoredDocument {
+  filename: string;
+  chunks_count: number;
+}
+
+interface DeleteModalState {
+  isOpen: boolean;
+  type: 'single' | 'all';
+  filename?: string;
+  chunksCount?: number;
 }
 
 export interface DocumentUploaderProps {
@@ -69,8 +84,94 @@ export default function DocumentUploader({
   const [files, setFiles] = useState<UploadFile[]>([]);
   const [isDragging, setIsDragging] = useState(false);
 
+  const [storedDocs, setStoredDocs] = useState<StoredDocument[]>([]);
+  const [loadingStored, setLoadingStored] = useState<boolean>(false);
+  const [deletingFile, setDeletingFile] = useState<string | null>(null);
+
+  const [deleteModal, setDeleteModal] = useState<DeleteModalState>({
+    isOpen: false,
+    type: 'single',
+  });
+
   const accept = acceptedFormats.map((format) => `.${format}`).join(',');
   const hasUploadingFiles = files.some((file) => file.status === 'uploading');
+
+  const fetchStoredDocuments = async () => {
+    setLoadingStored(true);
+    try {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+      const res = await fetch(`${API_URL}/documents`);
+      if (res.ok) {
+        const data = await res.json();
+        setStoredDocs(data.documents || []);
+      }
+    } catch (err) {
+      console.error("Failed to fetch stored documents:", err);
+    } finally {
+      setLoadingStored(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchStoredDocuments();
+  }, []);
+
+  const openDeleteSingleModal = (filename: string, chunksCount?: number) => {
+    setDeleteModal({
+      isOpen: true,
+      type: 'single',
+      filename,
+      chunksCount,
+    });
+  };
+
+  const openClearAllModal = () => {
+    setDeleteModal({
+      isOpen: true,
+      type: 'all',
+    });
+  };
+
+  const closeDeleteModal = () => {
+    setDeleteModal({ isOpen: false, type: 'single' });
+  };
+
+  const confirmDeleteAction = async () => {
+    if (deleteModal.type === 'single' && deleteModal.filename) {
+      const filename = deleteModal.filename;
+      setDeletingFile(filename);
+      closeDeleteModal();
+      try {
+        const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+        const res = await fetch(`${API_URL}/documents/${encodeURIComponent(filename)}`, {
+          method: 'DELETE',
+        });
+        if (res.ok) {
+          await fetchStoredDocuments();
+        }
+      } catch (err) {
+        console.error("Failed to delete document:", err);
+      } finally {
+        setDeletingFile(null);
+      }
+    } else if (deleteModal.type === 'all') {
+      setLoadingStored(true);
+      closeDeleteModal();
+      try {
+        const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+        const res = await fetch(`${API_URL}/documents`, {
+          method: 'DELETE',
+        });
+        if (res.ok) {
+          await fetchStoredDocuments();
+        }
+      } catch (err) {
+        console.error("Failed to clear memory:", err);
+      } finally {
+        setLoadingStored(false);
+      }
+    }
+  };
 
   const uploadFileToBackend = async (fileObj: UploadFile) => {
     const formData = new FormData();
@@ -114,6 +215,9 @@ export default function DocumentUploader({
             : f
         )
       );
+
+      // Refresh stored vector documents list upon upload completion
+      fetchStoredDocuments();
     } catch (err: any) {
       setFiles((current) =>
         current.map((f) =>
@@ -172,7 +276,7 @@ export default function DocumentUploader({
   };
 
   return (
-    <div className="w-full bg-[#0d0b0f] border border-white/10 rounded-2xl p-6 shadow-2xl backdrop-blur-xl">
+    <div className="w-full bg-[#0d0b0f] border border-white/10 rounded-2xl p-6 shadow-2xl backdrop-blur-xl relative">
       <div className="mb-6 flex items-center justify-between pb-4 border-b border-white/10">
         <h2 className="text-xl font-light text-white tracking-tight">{title}</h2>
         <span className="text-xs font-mono text-slate-400">FastAPI + LangGraph Ingestion</span>
@@ -319,7 +423,129 @@ export default function DocumentUploader({
             </div>
           </div>
         </div>
-      </div >
-    </div >
+      </div>
+
+      {/* Active Vector Memory Management Section */}
+      <div className="mt-8 pt-6 border-t border-white/10 space-y-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <FaDatabase className="text-emerald-400 h-4 w-4" />
+            <h3 className="text-sm font-semibold text-white">Active Vector Memory (Supabase)</h3>
+            <span className="text-xs font-mono text-slate-400 bg-white/5 px-2.5 py-0.5 rounded-full border border-white/10">
+              {storedDocs.length} PDF{storedDocs.length !== 1 ? 's' : ''} stored
+            </span>
+          </div>
+          {storedDocs.length > 0 && (
+            <button
+              type="button"
+              onClick={openClearAllModal}
+              disabled={loadingStored}
+              className="text-xs text-red-400 hover:text-red-300 font-mono flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-500/10 border border-red-500/20 hover:bg-red-500/20 transition-colors disabled:opacity-50"
+            >
+              <FaTrash className="h-3 w-3" />
+              <span>Clear All Memory</span>
+            </button>
+          )}
+        </div>
+
+        {storedDocs.length > 0 ? (
+          <div className="grid gap-3 sm:grid-cols-2">
+            {storedDocs.map((doc) => (
+              <div
+                key={doc.filename}
+                className="p-3.5 rounded-xl bg-black/50 border border-white/10 flex items-center justify-between gap-3 group hover:border-white/20 transition-all"
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="p-2 rounded-lg bg-white/5 text-emerald-400 shrink-0">
+                    <FaFileAlt className="h-4 w-4" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-xs font-medium text-white truncate max-w-[200px]" title={doc.filename}>
+                      {doc.filename}
+                    </p>
+                    <p className="text-[10px] text-slate-400 font-mono">
+                      {doc.chunks_count} vector chunk{doc.chunks_count !== 1 ? 's' : ''} stored
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => openDeleteSingleModal(doc.filename, doc.chunks_count)}
+                  disabled={deletingFile === doc.filename}
+                  title={`Delete ${doc.filename} from memory`}
+                  className="p-2 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-colors shrink-0 disabled:opacity-50"
+                >
+                  {deletingFile === doc.filename ? (
+                    <FaSpinner className="h-3.5 w-3.5 animate-spin text-red-400" />
+                  ) : (
+                    <FaTrash className="h-3.5 w-3.5" />
+                  )}
+                </button>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="p-4 rounded-xl bg-white/5 border border-white/5 text-center text-xs text-slate-400 font-mono">
+            {loadingStored ? 'Loading vector memory status...' : 'No PDF documents currently stored in vector memory.'}
+          </div>
+        )}
+      </div>
+
+      {/* Custom Styled Deletion Warning Modal */}
+      {deleteModal.isOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
+          <div className="w-full max-w-md bg-[#14121a] border border-white/20 rounded-2xl p-6 shadow-2xl space-y-5 relative">
+            <div className="flex items-center gap-3">
+              <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 shrink-0">
+                <FaExclamationTriangle className="h-6 w-6" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-white tracking-tight">
+                  {deleteModal.type === 'all'
+                    ? 'Clear All Vector Memory?'
+                    : 'Remove Document from Memory?'}
+                </h3>
+                <p className="text-xs text-slate-400 font-mono mt-0.5">
+                  Supabase pgvector deletion warning
+                </p>
+              </div>
+            </div>
+
+            <p className="text-sm text-slate-300 leading-relaxed font-light">
+              {deleteModal.type === 'all' ? (
+                <>
+                  Are you sure you want to delete <strong className="text-white font-semibold">ALL stored document embeddings</strong>? This action cannot be undone, and the AI chat will lose all document context.
+                </>
+              ) : (
+                <>
+                  Are you sure you want to delete <strong className="text-white font-semibold font-mono">{deleteModal.filename}</strong>? All associated vector chunks will be permanently removed from Supabase memory.
+                </>
+              )}
+            </p>
+
+            <div className="flex items-center justify-end gap-3 pt-2">
+              <button
+                type="button"
+                onClick={closeDeleteModal}
+                className="px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white text-xs font-semibold transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={confirmDeleteAction}
+                className="px-5 py-2.5 rounded-xl bg-red-600 hover:bg-red-500 text-white text-xs font-semibold transition-all shadow-lg shadow-red-600/20 flex items-center gap-2"
+              >
+                <FaTrash className="h-3 w-3" />
+                <span>{deleteModal.type === 'all' ? 'Yes, Clear All' : 'Yes, Delete PDF'}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
+
+

@@ -52,3 +52,61 @@ async def ingest_pdf_file(
         "chunks_count": len(chunks),
         "inserted_records_count": len(records)
     }
+
+from app.services.vector_store import (
+    list_stored_documents,
+    delete_document_by_filename,
+    clear_all_documents,
+)
+
+@router.get("/documents", status_code=status.HTTP_200_OK)
+async def get_documents():
+    """
+    Returns a list of all currently stored PDF documents in Supabase vector store with chunk counts.
+    """
+    try:
+        documents = list_stored_documents()
+        return {"status": "success", "documents": documents}
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to fetch document list: {str(e)}"
+        )
+
+@router.delete("/documents/{filename:path}", status_code=status.HTTP_200_OK)
+async def delete_document_endpoint(filename: str):
+    """
+    Deletes vector records associated with a specific filename from Supabase memory.
+    """
+    try:
+        deleted_count = delete_document_by_filename(filename)
+        return {
+            "status": "success",
+            "message": f"Successfully deleted '{filename}' from vector memory.",
+            "filename": filename,
+            "deleted_records_count": deleted_count
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to delete document '{filename}': {str(e)}"
+        )
+
+@router.delete("/documents", status_code=status.HTTP_200_OK)
+async def clear_all_documents_endpoint():
+    """
+    Deletes all document vector records from Supabase memory.
+    """
+    try:
+        deleted_count = clear_all_documents()
+        return {
+            "status": "success",
+            "message": "Successfully cleared all documents from vector memory.",
+            "deleted_records_count": deleted_count
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to clear documents: {str(e)}"
+        )
+
