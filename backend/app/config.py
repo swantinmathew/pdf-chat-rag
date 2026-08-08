@@ -21,7 +21,8 @@ class Settings:
 
     # Supabase Vector Store Credentials
     SUPABASE_URL: str = os.getenv("SUPABASE_URL", "")
-    SUPABASE_SERVICE_KEY: str = os.getenv("SUPABASE_SERVICE_KEY", "")
+    SUPABASE_SERVICE_KEY: str = os.getenv("SUPABASE_SERVICE_KEY") or os.getenv("SUPABASE_KEY", "")
+
 
     # Parse CORS_ORIGINS as list of strings
     _cors_origins_str: str = os.getenv("CORS_ORIGINS", "http://localhost:3000,http://localhost:5173")
