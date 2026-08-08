@@ -64,8 +64,14 @@ LIMIT 5;`,
   return (
     <section className="relative w-full bg-[#0d0b0f] py-24 px-6 md:px-12 lg:px-20 border-t border-white/10 overflow-hidden">
       <div className="relative z-10 max-w-6xl mx-auto space-y-12">
-        {/* Minimal Section Header - Pure White / Solid Typography */}
-        <div className="text-left space-y-3 max-w-2xl">
+        {/* Minimal Section Header - Scroll Animated */}
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, amount: 0.3 }}
+          transition={{ duration: 0.8 }}
+          className="text-left space-y-3 max-w-2xl"
+        >
           <span className="text-xs font-mono font-bold tracking-widest text-slate-400 uppercase">
             RAG ARCHITECTURE PIPELINE
           </span>
@@ -75,21 +81,27 @@ LIMIT 5;`,
           <p className="text-slate-400 text-sm md:text-base leading-relaxed font-normal">
             Explore how uploaded PDF documents are processed, chunked, and indexed for sub-second similarity search.
           </p>
-        </div>
+        </motion.div>
 
-        {/* Stage Tabs - Minimal Solid Border Styling */}
+        {/* Stage Tabs - Scroll Animated Card Stagger */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {features.map((feature, idx) => {
             const isActive = activeTab === idx;
 
             return (
-              <button
+              <motion.button
                 key={feature.id}
+                initial={{ opacity: 0, y: 35 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, amount: 0.3 }}
+                transition={{ duration: 0.6, delay: idx * 0.15 }}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
                 onClick={() => setActiveTab(idx)}
                 className={`p-6 rounded-2xl text-left transition-all duration-200 border ${
                   isActive
                     ? "border-white bg-white/10 shadow-xl"
-                    : "border-white/10 bg-white/5 hover:border-white/30"
+                    : "border-white/10 bg-white/5 hover:border-white/30 hover:bg-white/10"
                 }`}
               >
                 <div className="flex items-center justify-between mb-4">
@@ -99,19 +111,19 @@ LIMIT 5;`,
                 </div>
                 <h3 className="text-lg font-semibold text-white mb-1">{feature.title}</h3>
                 <p className="text-xs text-slate-400 line-clamp-2 leading-relaxed">{feature.description}</p>
-              </button>
+              </motion.button>
             );
           })}
         </div>
 
-        {/* Dynamic Display Area */}
+        {/* Dynamic Display Area - Scroll Animated */}
         <AnimatePresence mode="wait">
           <motion.div
             key={currentFeature.id}
-            initial={{ opacity: 0, y: 15 }}
+            initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -15 }}
-            transition={{ duration: 0.3 }}
+            exit={{ opacity: 0, y: -20 }}
+            transition={{ duration: 0.35 }}
             className="p-8 rounded-2xl bg-black/60 border border-white/10 grid grid-cols-1 lg:grid-cols-12 gap-8"
           >
             {/* Left Content Column */}
@@ -131,18 +143,23 @@ LIMIT 5;`,
               {/* Metrics Grid */}
               <div className="grid grid-cols-3 gap-3 pt-4 border-t border-white/10">
                 {currentFeature.metrics.map((m, i) => (
-                  <div key={i} className="p-3 rounded-xl bg-white/5 border border-white/10">
+                  <motion.div
+                    key={i}
+                    whileHover={{ scale: 1.05 }}
+                    className="p-3 rounded-xl bg-white/5 border border-white/10 transition-colors"
+                  >
                     <span className="text-[10px] font-mono text-slate-400 block mb-1">{m.label}</span>
                     <span className="text-xs font-bold text-white font-mono">{m.value}</span>
-                  </div>
+                  </motion.div>
                 ))}
               </div>
             </div>
 
             {/* Right Code Column */}
             <div className="lg:col-span-5 bg-black rounded-xl border border-white/10 p-5 font-mono text-xs text-slate-300 flex flex-col justify-between overflow-x-auto">
-              <div className="pb-3 border-b border-white/10 text-slate-400 text-[11px] font-mono">
-                langgraph_node.py
+              <div className="pb-3 border-b border-white/10 text-slate-400 text-[11px] font-mono flex items-center justify-between">
+                <span>langgraph_node.py</span>
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
               </div>
               <pre className="py-4 text-white leading-relaxed overflow-x-auto text-[11px]">
                 <code>{currentFeature.codeSnippet}</code>

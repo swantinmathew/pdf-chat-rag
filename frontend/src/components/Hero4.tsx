@@ -1,8 +1,8 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
-import { Play, ChevronDown, Sparkles } from 'lucide-react';
+import { Play, ChevronDown, Menu, X } from 'lucide-react';
 import { motion, useMotionValue, useMotionTemplate } from 'framer-motion';
 
 export interface NavLink {
@@ -29,20 +29,19 @@ export interface Hero4Props {
 }
 
 export default function Hero4({
-    brandName = 'DocuMind RAG',
+    brandName = 'Docent',
     navLinks = [
-        { label: 'Architecture', href: '#', hasDropdown: true },
-        { label: 'LangGraph', href: '#', hasDropdown: true },
-        { label: 'Supabase Vector', href: '#' },
-        { label: 'SSE Stream', href: '#' },
-        { label: 'Docs', href: '#' },
+        { label: 'Architecture', href: '#architecture' },
+        { label: 'PDF Upload', href: '/upload' },
+        { label: 'AI Chat', href: '/chat' },
+        { label: 'GitHub', href: 'https://github.com/swantinmathew/pdf-chat-rag' },
     ],
     loginLabel = 'Upload PDF',
     loginHref = '/upload',
     badgeText = '✦  Powered by FastAPI, LangGraph & Supabase pgvector',
     headingLine1 = 'Where AI Intelligence',
     headingLine2 = 'Meets Search Impact.',
-    description = 'DocuMind empowers modern teams to ingest PDFs, vectorize text with Supabase pgvector, and stream grounded RAG answers in real-time.',
+    description = 'Docent empowers modern teams to ingest PDFs, vectorize text with Supabase pgvector, and stream grounded RAG answers in real-time.',
     primaryCtaLabel = 'Start RAG Chat',
     primaryCtaHref = '/chat',
     secondaryCtaLabel = 'Upload PDF',
@@ -50,6 +49,7 @@ export default function Hero4({
     achievementText = "Processed over 1,000+ vector chunks with sub-second retrieval",
     backgroundImage = 'https://assets.watermelon.sh/hero-5.avif',
 }: Hero4Props) {
+    const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false);
 
     const line1Words = headingLine1.split(' ');
     const line2Words = headingLine2.split(' ');
@@ -70,7 +70,7 @@ export default function Hero4({
             onMouseMove={handleMouseMove}
         >
 
-            {/* Background Image — Full Screen Cover */}
+            {/* Background Image — cinematic zoom in */}
             <motion.div
                 className="absolute inset-0 z-0"
                 initial={{ scale: 1.12, opacity: 0 }}
@@ -98,7 +98,7 @@ export default function Hero4({
                 }}
             />
 
-            {/* Mouse-tracking spotlight for minimal elevation */}
+            {/* Mouse-tracking spotlight */}
             <motion.div
                 className="pointer-events-none absolute inset-0 z-[2] opacity-0 group-hover:opacity-100 transition-opacity duration-700"
                 style={{
@@ -117,23 +117,20 @@ export default function Hero4({
 
                 {/* ─── Navbar ─── */}
                 <motion.nav
-                    className="w-full px-6 md:px-12 lg:px-20 py-6 flex items-center justify-between"
+                    className="w-full px-6 md:px-12 lg:px-20 py-6 flex items-center justify-between relative z-30"
                     initial={{ opacity: 0, y: -24 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.9, delay: 0.15, ease: 'easeOut' }}
                 >
-                    {/* Logo */}
-                    <Link href="/" className="flex items-center gap-2.5 shrink-0 group/logo">
-                        <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-indigo-500 to-violet-500 flex items-center justify-center">
-                          <Sparkles className="w-4 h-4 text-white" />
-                        </div>
-                        <span className="text-white text-lg font-semibold tracking-tight transition-all duration-300">
+                    {/* Brand Name Typography */}
+                    <Link href="/" className="shrink-0">
+                        <span className="text-white text-xl font-semibold tracking-tight hover:opacity-90 transition-opacity">
                             {brandName}
                         </span>
                     </Link>
 
-                    {/* Center Nav Links */}
-                    <div className="hidden lg:flex items-center gap-7 xl:gap-9">
+                    {/* Center Nav Links - Desktop */}
+                    <div className="hidden md:flex items-center gap-7 xl:gap-9">
                         {navLinks.map((link, idx) => (
                             <motion.a
                                 key={idx}
@@ -152,11 +149,11 @@ export default function Hero4({
                         ))}
                     </div>
 
-                    {/* Right Side — Log in / Upload */}
+                    {/* Right Side — Upload & Mobile Menu Toggle */}
                     <div className="flex items-center gap-5">
                         <motion.a
                             href={loginHref}
-                            className="flex items-center gap-2.5 text-white/85 hover:text-white transition-colors text-[14px] font-medium group"
+                            className="hidden sm:flex items-center gap-2.5 text-white/85 hover:text-white transition-colors text-[14px] font-medium group"
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             transition={{ duration: 0.6, delay: 0.6 }}
@@ -168,15 +165,39 @@ export default function Hero4({
                             {loginLabel}
                         </motion.a>
 
-                        <button className="lg:hidden text-white p-1">
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                                <line x1="3" y1="7" x2="21" y2="7" />
-                                <line x1="3" y1="12" x2="16" y2="12" />
-                                <line x1="3" y1="17" x2="21" y2="17" />
-                            </svg>
+                        {/* Mobile Menu Toggle Button */}
+                        <button 
+                            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                            className="md:hidden text-white p-2 rounded-lg bg-white/10 hover:bg-white/20 transition-colors"
+                            aria-label="Toggle navigation menu"
+                        >
+                            {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
                         </button>
                     </div>
                 </motion.nav>
+
+                {/* Mobile Dropdown Navigation Menu */}
+                {mobileMenuOpen && (
+                    <div className="md:hidden absolute top-20 left-0 right-0 z-40 bg-[#0d0b0f]/95 border-b border-white/10 backdrop-blur-2xl px-6 py-6 space-y-4">
+                        {navLinks.map((link, idx) => (
+                            <a
+                                key={idx}
+                                href={link.href}
+                                onClick={() => setMobileMenuOpen(false)}
+                                className="block text-white/80 hover:text-white text-base font-medium py-2 border-b border-white/5"
+                            >
+                                {link.label}
+                            </a>
+                        ))}
+                        <a
+                            href={loginHref}
+                            onClick={() => setMobileMenuOpen(false)}
+                            className="block text-emerald-400 text-base font-medium py-2"
+                        >
+                            {loginLabel}
+                        </a>
+                    </div>
+                )}
 
                 {/* ─── Hero Content ─── */}
                 <div className="flex-1 flex flex-col justify-center px-6 md:px-12 lg:px-20 py-12 md:py-20 max-w-5xl">
@@ -196,13 +217,13 @@ export default function Hero4({
                         </motion.div>
 
                         {/* Heading — word-by-word stagger */}
-                        <h1 className="text-white text-[42px] sm:text-[54px] md:text-[64px] lg:text-[72px] font-light leading-[1.05] tracking-tight mb-6 md:mb-8">
-                            <span className="block overflow-hidden">
+                        <h1 className="text-white text-[38px] sm:text-[54px] md:text-[64px] lg:text-[72px] font-light leading-[1.05] tracking-tight mb-6 md:mb-8">
+                            <span className="block overflow-hidden py-1">
                                 {line1Words.map((word, i) => (
                                     <motion.span
                                         key={i}
                                         className="inline-block mr-[0.3em]"
-                                        initial={{ y: '120%', opacity: 0 }}
+                                        initial={{ y: '100%', opacity: 0 }}
                                         animate={{ y: 0, opacity: 1 }}
                                         transition={{
                                             duration: 0.85,
@@ -214,12 +235,12 @@ export default function Hero4({
                                     </motion.span>
                                 ))}
                             </span>
-                            <span className="block overflow-hidden">
+                            <span className="block overflow-hidden py-1">
                                 {line2Words.map((word, i) => (
                                     <motion.span
                                         key={i}
                                         className="inline-block mr-[0.3em]"
-                                        initial={{ y: '120%', opacity: 0 }}
+                                        initial={{ y: '100%', opacity: 0 }}
                                         animate={{ y: 0, opacity: 1 }}
                                         transition={{
                                             duration: 0.85,
@@ -253,6 +274,7 @@ export default function Hero4({
 
                         {/* CTA Buttons */}
                         <div className="flex items-center gap-4 md:gap-5">
+                            {/* Primary — white filled pill */}
                             <motion.a
                                 href={primaryCtaHref}
                                 className="relative bg-white text-[#0d0b0f] rounded-full px-7 py-3 text-[14px] font-semibold overflow-hidden group/btn shadow-xl shadow-white/10"
@@ -267,6 +289,7 @@ export default function Hero4({
                                 </span>
                             </motion.a>
 
+                            {/* Secondary — semi-transparent dark pill with play icon */}
                             <motion.a
                                 href={secondaryCtaHref}
                                 className="flex items-center gap-2.5 bg-white/10 hover:bg-white/20 backdrop-blur-sm border border-white/15 text-white rounded-full px-6 py-3 text-[14px] font-medium transition-all duration-300 group"
@@ -307,13 +330,24 @@ export default function Hero4({
                                 </div>
                             ))}
                         </div>
-                        <p className="text-white/50 text-[13px] md:text-[14px] font-medium tracking-wide">
+                        <p className="text-white/50 text-[13px] md:text-[14px] font-medium tracking-wide hidden sm:block">
                             {achievementText}
                         </p>
                     </motion.div>
                 </div>
 
             </div>
+
+            {/* Decorative Corner Frame Lines */}
+            <motion.div
+                className="absolute top-6 right-6 md:top-8 md:right-10 lg:right-16 w-12 h-12 pointer-events-none hidden md:block"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 1, delay: 2.4 }}
+            >
+                <span className="absolute top-0 right-0 w-full h-px bg-gradient-to-l from-white/20 to-transparent" />
+                <span className="absolute top-0 right-0 w-px h-full bg-gradient-to-b from-white/20 to-transparent" />
+            </motion.div>
         </section>
     );
 }

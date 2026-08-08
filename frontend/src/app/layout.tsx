@@ -1,7 +1,5 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import Link from "next/link";
-import { Sparkles } from "lucide-react";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -15,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "DocuMind RAG — Where AI Intelligence Meets Search Impact",
+  title: "Docent — AI Document Intelligence & Search",
   description: "Enterprise Retrieval-Augmented Generation platform powered by FastAPI, LangGraph & Supabase Vector Store.",
 };
 
@@ -31,7 +29,7 @@ export default function RootLayout({
         <main className="flex-1 w-full flex flex-col p-0 m-0">{children}</main>
 
         <footer className="border-t border-white/10 bg-[#0d0b0f] py-6 text-center text-xs text-slate-500">
-          <p>© {new Date().getFullYear()} DocuMind RAG • Built with Next.js 15, FastAPI, LangGraph & Supabase pgvector</p>
+          <p>© {new Date().getFullYear()} Docent • Built with Next.js 15, FastAPI, LangGraph & Supabase pgvector</p>
         </footer>
       </body>
     </html>
